@@ -1,6 +1,6 @@
 (function () {
-  const API_BASE = "https://YOUR-RENDER-URL.onrender.com"; // <-- change this
-  const GHL_WEBHOOK = "https://hooks.gohighlevel.com/XXXX"; // <-- change this
+  const API_BASE = "https://roof-widget-backend.onrender.com"; // <-- change this
+  const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/w06FI2oCDolhpxHVnjJn/webhook-trigger/24c72f4d-dbca-4326-a3ab-30c6e4486541"; // <-- change this
 
   function el(tag, attrs = {}, children = []) {
     const e = document.createElement(tag);
