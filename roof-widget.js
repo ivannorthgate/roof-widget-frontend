@@ -1,7 +1,7 @@
 (function () {
   // ========= EDIT THESE 2 LINES =========
-  const API_BASE = "https://roof-widget-backend.onrender.com"; // <-- your Render Live URL
-  const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/w06FI2oCDolhpxHVnjJn/webhook-trigger/24c72f4d-dbca-4326-a3ab-30c6e4486541"; // <-- paste your real GHL webhook
+  const API_BASE = "https://roof-widget-backend.onrender.com"; 
+  const GHL_WEBHOOK = "https://hooks.gohighlevel.com/hooks/YOUR_REAL_WEBHOOK_ID";
   // =====================================
 
   function el(tag, attrs = {}, children = []) {
@@ -10,25 +10,105 @@
     children.forEach(c => e.appendChild(c));
     return e;
   }
+  function text(t) { return document.createTextNode(t); }
 
-  function text(t) {
-    return document.createTextNode(t);
+  // ✅ Try Photon first, then Nominatim. Return structured address when possible.
+  async function addressSuggest(q) {
+    // 1) Photon
+    try {
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`;
+      const r = await fetch(url);
+      const d = await r.json();
+
+      const photonResults = (d.features || []).map(f => {
+        const p = f.properties || {};
+        const housenumber = p.housenumber || "";
+        const street = p.street || p.name || "";
+        const city = p.city || p.locality || "";
+        const state = p.state || "";
+        const postcode = p.postcode || "";
+
+        return {
+          label: `${housenumber} ${street}, ${city}, ${state} ${postcode}`.trim(),
+          lat: f.geometry.coordinates[1],
+          lng: f.geometry.coordinates[0],
+          street: `${housenumber} ${street}`.trim(),
+          city,
+          state,
+          postal_code: postcode,
+          country: p.country || "US"
+        };
+      }).filter(x => x.label.length > 3);
+
+      if (photonResults.length) return photonResults;
+    } catch (e) {
+      console.warn("Photon failed, trying Nominatim...");
+    }
+
+    // 2) Nominatim fallback (more complete)
+    const nUrl =
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`;
+
+    const nr = await fetch(nUrl, {
+      headers: {
+        "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)"
+      }
+    });
+    const nd = await nr.json();
+
+    return (nd || []).map(x => {
+      const a = x.address || {};
+      const house = a.house_number || "";
+      const road = a.road || a.neighbourhood || "";
+      const city = a.city || a.town || a.village || a.county || "";
+      const state = a.state || "";
+      const postcode = a.postcode || "";
+      const country = a.country_code ? a.country_code.toUpperCase() : "US";
+
+      return {
+        label: x.display_name,
+        lat: parseFloat(x.lat),
+        lng: parseFloat(x.lon),
+        street: `${house} ${road}`.trim(),
+        city,
+        state,
+        postal_code: postcode,
+        country
+      };
+    });
   }
 
-  async function photonSuggest(q) {
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`;
-    const r = await fetch(url);
-    const d = await r.json();
-    return d.features.map(f => ({
-      label:
-        (f.properties.name || "") +
-        " " +
-        (f.properties.city || "") +
-        " " +
-        (f.properties.state || ""),
-      lat: f.geometry.coordinates[1],
-      lng: f.geometry.coordinates[0]
-    }));
+  // ✅ If user typed manually, we resolve it once to structured fields
+  async function resolveAddressDetails(addressText) {
+    const nUrl =
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(addressText)}`;
+
+    const nr = await fetch(nUrl, {
+      headers: {
+        "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)"
+      }
+    });
+    const nd = await nr.json();
+    if (!nd || !nd.length) return null;
+
+    const x = nd[0];
+    const a = x.address || {};
+    const house = a.house_number || "";
+    const road = a.road || a.neighbourhood || "";
+    const city = a.city || a.town || a.village || a.county || "";
+    const state = a.state || "";
+    const postcode = a.postcode || "";
+    const country = a.country_code ? a.country_code.toUpperCase() : "US";
+
+    return {
+      lat: parseFloat(x.lat),
+      lng: parseFloat(x.lon),
+      street: `${house} ${road}`.trim(),
+      city,
+      state,
+      postal_code: postcode,
+      country
+    };
   }
 
   async function measureRoof(lat, lng, address) {
@@ -44,10 +124,7 @@
     const r = await fetch(`${API_BASE}/create-lead`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...data,
-        ghl_webhook_url: GHL_WEBHOOK
-      })
+      body: JSON.stringify({ ...data, ghl_webhook_url: GHL_WEBHOOK })
     });
     return r.json();
   }
@@ -98,7 +175,17 @@
       if (q.length < 3) return;
 
       try {
-        const suggestions = await photonSuggest(q);
+        const suggestions = await addressSuggest(q);
+
+        if (!suggestions.length) {
+          const noRes = el(
+            "div",
+            { style: "padding:10px;color:#888;font-size:14px;" },
+            [text("No suggestions found. You can still click “Measure My Roof.”")]
+          );
+          suggBox.appendChild(noRes);
+          return;
+        }
 
         suggestions.forEach(s => {
           const item = el(
@@ -120,7 +207,8 @@
         });
       } catch (e) {
         console.error(e);
-        status.textContent = "Address search failed. Please try again.";
+        status.textContent =
+          "Address search failed. You can still click “Measure My Roof.”";
       }
     });
 
@@ -138,8 +226,13 @@
       formBox.style.display = "none";
 
       if (!selected) {
-        status.textContent = "Please select an address from the list.";
-        return;
+        const typed = input.value.trim();
+        if (!typed) {
+          status.textContent = "Please type an address.";
+          return;
+        }
+        // Manual typed fallback
+        selected = { label: typed, lat: null, lng: null };
       }
 
       status.textContent = "Measuring roof...";
@@ -183,7 +276,7 @@
       showLeadForm(data.squares, data.pitch_class);
     };
 
-    function showLeadForm(squares, pitchClass) {
+    async function showLeadForm(squares, pitchClass) {
       formBox.style.display = "block";
       formBox.innerHTML = "";
 
@@ -226,14 +319,37 @@
 
         const fullName = `${firstName.value} ${lastName.value}`.trim();
 
+        // ✅ If user selected a suggestion we already have structured fields
+        // ✅ If not, resolve once via Nominatim
+        let details = null;
+        if (selected && selected.street) {
+          details = {
+            street: selected.street,
+            city: selected.city,
+            state: selected.state,
+            postal_code: selected.postal_code,
+            country: selected.country
+          };
+        } else {
+          details = await resolveAddressDetails(input.value);
+        }
+
         try {
           await sendLead({
             first_name: firstName.value.trim(),
             last_name: lastName.value.trim(),
-            name: fullName, // keep compatibility for GHL
+            name: fullName,
             phone: phone.value.trim(),
             email: email.value.trim(),
             address: input.value,
+
+            // ✅ separate address fields to GHL
+            street: details?.street || "",
+            city: details?.city || "",
+            state: details?.state || "",
+            postal_code: details?.postal_code || "",
+            country: details?.country || "US",
+
             squares: parseFloat(squares) || 0,
             pitch_class: pitchClass
           });
