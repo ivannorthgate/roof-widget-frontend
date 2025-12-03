@@ -4,14 +4,262 @@
   const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/w06FI2oCDolhpxHVnjJn/webhook-trigger/24c72f4d-dbca-4326-a3ab-30c6e4486541";
   // =====================================
 
+  // ---------- helpers ----------
   function el(tag, attrs = {}, children = []) {
     const e = document.createElement(tag);
-    Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    Object.entries(attrs).forEach(([k, v]) => {
+      if (k === "class") e.className = v;
+      else if (k === "style") e.setAttribute("style", v);
+      else e.setAttribute(k, v);
+    });
     children.forEach(c => e.appendChild(c));
     return e;
   }
   function text(t) { return document.createTextNode(t); }
 
+  // ---------- inject modern styling ----------
+  function injectStyles() {
+    if (document.getElementById("roof-widget-styles")) return;
+
+    const css = `
+      @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap');
+
+      :root{
+        --rw-bg: #0b0b0d;
+        --rw-card: #121216;
+        --rw-card-2: #17171d;
+        --rw-border: rgba(255,255,255,0.08);
+        --rw-text: #f5f5f7;
+        --rw-muted: #a0a0ad;
+        --rw-red: #e50914;
+        --rw-red-2: #ff2430;
+        --rw-green: #16a34a;
+        --rw-radius: 14px;
+        --rw-radius-sm: 10px;
+        --rw-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      }
+
+      /* Hard-center inside any GHL column */
+      .rw-wrap{
+        font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+        color: var(--rw-text);
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;     /* centers children horizontally */
+        justify-content: flex-start;
+        margin: 0 auto;
+        text-align: left;
+      }
+
+      .rw-headline{
+        width: 100%;
+        max-width: 560px;
+        text-align: center;
+        font-family: 'Montserrat', system-ui, sans-serif;
+        font-weight: 900;
+        font-size: 28px;
+        line-height: 1.15;
+        letter-spacing: .2px;
+        margin: 0 0 14px 0;
+        color: #fff;
+      }
+      .rw-headline .rw-headline-red{
+        color: var(--rw-red);
+      }
+
+      .rw-card{
+        width: 100%;
+        max-width: 560px;
+        background: linear-gradient(180deg, var(--rw-card), var(--rw-card-2));
+        border: 1px solid var(--rw-border);
+        border-radius: var(--rw-radius);
+        box-shadow: var(--rw-shadow);
+        padding: 18px;
+        margin: 0 auto;          /* centers the card */
+      }
+
+      .rw-header{
+        display:flex;
+        gap:12px;
+        align-items:center;
+        margin-bottom:14px;
+      }
+      .rw-logo{
+        width:42px;height:42px;border-radius:10px;
+        background: radial-gradient(80% 80% at 30% 20%, var(--rw-red-2), var(--rw-red));
+        display:grid;place-items:center;font-weight:800;color:white;
+        letter-spacing:.5px;
+        box-shadow: 0 6px 14px rgba(229,9,20,0.45);
+      }
+      .rw-title{
+        font-size:20px;font-weight:800;line-height:1.1;
+      }
+      .rw-sub{
+        color:var(--rw-muted);font-size:13px;margin-top:2px;
+      }
+
+      .rw-section-title{
+        margin:14px 0 8px;
+        font-weight:700;font-size:14px;letter-spacing:.2px;
+        color:#fff;
+      }
+
+      .rw-input{
+        width:100%;
+        padding:12px 12px;
+        background:#0e0e12;
+        border:1px solid var(--rw-border);
+        border-radius:12px;
+        color:var(--rw-text);
+        font-size:15px;
+        outline:none;
+        transition: border .15s ease, box-shadow .15s ease;
+      }
+      .rw-input:focus{
+        border-color: rgba(229,9,20,0.9);
+        box-shadow: 0 0 0 3px rgba(229,9,20,0.20);
+      }
+
+      .rw-sugg{
+        margin-top:6px;
+        background:#0e0e12;
+        border:1px solid var(--rw-border);
+        border-radius:12px;
+        overflow:hidden;
+      }
+      .rw-sugg-item{
+        padding:10px 12px;
+        cursor:pointer;
+        font-size:14px;
+        border-bottom:1px solid var(--rw-border);
+      }
+      .rw-sugg-item:last-child{border-bottom:none;}
+      .rw-sugg-item:hover{background:#15151b;}
+
+      .rw-note{
+        font-size:13px;color:var(--rw-muted);margin-top:8px;line-height:1.4;
+      }
+      .rw-status{
+        font-size:14px;margin-top:10px;color:#fff;
+      }
+
+      .rw-map-wrap{
+        margin-top:10px;
+        border:1px solid var(--rw-border);
+        background:#0e0e12;
+        border-radius:14px;
+        overflow:hidden;
+      }
+      .rw-map{
+        height:260px;width:100%;
+      }
+
+      .rw-btn{
+        margin-top:12px;
+        width:100%;
+        padding:13px 14px;
+        font-weight:800;
+        letter-spacing:.3px;
+        font-size:15px;
+        color:white;
+        background: linear-gradient(180deg, var(--rw-red-2), var(--rw-red));
+        border:none;
+        border-radius:12px;
+        cursor:pointer;
+        transition: transform .05s ease, opacity .2s ease, box-shadow .2s ease;
+        box-shadow: 0 8px 20px rgba(229,9,20,0.45);
+      }
+      .rw-btn:hover{transform: translateY(-1px);}
+      .rw-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+      .rw-estimate{
+        margin-top:12px;
+        display:none;
+        padding:14px;
+        background:#0e0e12;
+        border:1px dashed rgba(255,255,255,0.15);
+        border-radius:12px;
+      }
+      .rw-est-grid{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+      }
+      .rw-stat{
+        background:#14141a;
+        border:1px solid var(--rw-border);
+        border-radius:12px;
+        padding:12px;
+      }
+      .rw-stat-label{
+        font-size:12px;color:var(--rw-muted);margin-bottom:4px;
+      }
+      .rw-stat-value{
+        font-size:20px;font-weight:800;
+      }
+      .rw-est-foot{
+        margin-top:8px;font-size:12px;color:var(--rw-muted);
+      }
+
+      .rw-form{
+        margin-top:12px;display:none;
+        background:#0e0e12;border:1px solid var(--rw-border);
+        border-radius:12px;padding:12px;
+      }
+      .rw-form-grid{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+      }
+      .rw-field{
+        display:flex;flex-direction:column;gap:6px;
+      }
+      .rw-label{
+        font-size:12px;color:var(--rw-muted);
+      }
+      .rw-label b{color:#fff;font-weight:700;}
+      .rw-required{color:var(--rw-red);margin-left:3px;}
+
+      .rw-error{
+        display:none;
+        color:#ffd2d5;
+        background:rgba(229,9,20,0.12);
+        border:1px solid rgba(229,9,20,0.45);
+        padding:8px 10px;border-radius:10px;
+        font-size:13px;margin-bottom:8px;
+      }
+
+      .rw-submit{
+        margin-top:10px;
+        background: linear-gradient(180deg, #19c467, var(--rw-green));
+        box-shadow: 0 8px 20px rgba(22,163,74,0.45);
+      }
+
+      .rw-success{
+        margin-top:10px;
+        background: rgba(22,163,74,0.12);
+        border:1px solid rgba(22,163,74,0.5);
+        color:#d9ffe8;
+        padding:10px;border-radius:10px;font-size:14px;
+        display:none;
+      }
+
+      @media (max-width: 520px){
+        .rw-headline{font-size:22px;}
+        .rw-form-grid{grid-template-columns:1fr;}
+        .rw-est-grid{grid-template-columns:1fr;}
+        .rw-map{height:220px;}
+      }
+    `;
+
+    const styleTag = document.createElement("style");
+    styleTag.id = "roof-widget-styles";
+    styleTag.textContent = css;
+    document.head.appendChild(styleTag);
+  }
+
+  // ---------- address / geocode ----------
   async function addressSuggest(q) {
     try {
       const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8`;
@@ -31,8 +279,7 @@
           lat: f.geometry.coordinates[1],
           lng: f.geometry.coordinates[0],
           street: `${housenumber} ${street}`.trim(),
-          city,
-          state,
+          city, state,
           postal_code: postcode,
           country: p.country || "US"
         };
@@ -45,7 +292,6 @@
 
     const nUrl =
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`;
-
     const nr = await fetch(nUrl, {
       headers: { "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)" }
     });
@@ -65,8 +311,7 @@
         lat: parseFloat(x.lat),
         lng: parseFloat(x.lon),
         street: `${house} ${road}`.trim(),
-        city,
-        state,
+        city, state,
         postal_code: postcode,
         country
       };
@@ -76,7 +321,6 @@
   async function resolveAddressDetails(addressText) {
     const nUrl =
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(addressText)}`;
-
     const nr = await fetch(nUrl, {
       headers: { "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)" }
     });
@@ -96,13 +340,13 @@
       lat: parseFloat(x.lat),
       lng: parseFloat(x.lon),
       street: `${house} ${road}`.trim(),
-      city,
-      state,
+      city, state,
       postal_code: postcode,
       country
     };
   }
 
+  // ---------- API ----------
   async function measureRoof(lat, lng, address) {
     const r = await fetch(`${API_BASE}/measure-roof`, {
       method: "POST",
@@ -121,77 +365,86 @@
     return r.json();
   }
 
+  // ---------- Widget ----------
   function init(containerId = "roof-widget") {
+    injectStyles();
+
     const root = document.getElementById(containerId);
     if (!root) return;
-
     root.innerHTML = "";
-    root.style.fontFamily = "Arial, sans-serif";
-    root.style.maxWidth = "520px";
+    root.className = "rw-wrap";
 
-    const title = el("h3", {}, [text("Instant Roof Estimate")]);
+    // ✅ NEW: Big headline on top
+    const headline = el("div", { class: "rw-headline" }, [
+      text("Skip The Sales Pitch, Get Your "),
+      el("span", { class: "rw-headline-red" }, [text("Own Roof Price")]),
+      text(" On Your Own Time")
+    ]);
 
+    const card = el("div", { class: "rw-card" });
+
+    const header = el("div", { class: "rw-header" }, [
+      el("div", { class: "rw-logo" }, [text("NG")]),
+      el("div", {}, [
+        el("div", { class: "rw-title" }, [text("Instant Roof Estimate")]),
+        el("div", { class: "rw-sub" }, [text("Fast, free estimate — confirmed on inspection.")]),
+      ])
+    ]);
+
+    const addrTitle = el("div", { class: "rw-section-title" }, [text("Property Address")]);
     const input = el("input", {
+      class: "rw-input",
       type: "text",
-      placeholder: "Type your address...",
-      style:
-        "width:100%;padding:12px;font-size:16px;border:1px solid #ccc;border-radius:8px;",
-      required: "true"
+      placeholder: "e.g. 325 Depot St, Ann Arbor, MI 48104",
+      required: "true",
+      autocomplete: "off"
     });
 
-    const suggBox = el("div", {
-      style:
-        "border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px;"
-    });
+    const suggBox = el("div", { class: "rw-sugg", style: "display:none;" });
 
-    // ✅ SATELLITE PREVIEW BOX
-    const mapWrap = el("div", {
-      style:
-        "margin-top:10px;border:1px solid #ddd;border-radius:8px;overflow:hidden;display:none;"
-    });
-    const mapDiv = el("div", {
-      id: `${containerId}-map`,
-      style: "height:260px;width:100%;"
-    });
+    const note = el("div", { class: "rw-note" }, [
+      text("Tip: include ZIP for best results. If no suggestions appear, you can still continue.")
+    ]);
+
+    const mapWrap = el("div", { class: "rw-map-wrap", style: "display:none;" });
+    const mapDiv = el("div", { id: `${containerId}-map`, class: "rw-map" });
     mapWrap.appendChild(mapDiv);
 
-    const status = el("div", {
-      style: "margin-top:10px;color:#555;font-size:14px;"
-    });
+    const status = el("div", { class: "rw-status" });
+    const btn = el("button", { class: "rw-btn" }, [text("Measure My Roof")]);
 
-    const resultBox = el("div", {
-      style:
-        "margin-top:12px;padding:12px;border:1px solid #ddd;border-radius:8px;display:none;"
-    });
+    const estimateBox = el("div", { class: "rw-estimate" });
+    estimateBox.innerHTML = `
+      <div class="rw-est-grid">
+        <div class="rw-stat">
+          <div class="rw-stat-label">Estimated Roof Size</div>
+          <div class="rw-stat-value" id="${containerId}-sq">—</div>
+        </div>
+        <div class="rw-stat">
+          <div class="rw-stat-label">Estimated Pitch</div>
+          <div class="rw-stat-value" id="${containerId}-pitch">—</div>
+        </div>
+      </div>
+      <div class="rw-est-foot">Final measurements confirmed during on-site inspection.</div>
+    `;
 
-    const formBox = el("div", {
-      style: "margin-top:12px;display:none;"
-    });
+    const formBox = el("div", { class: "rw-form" });
+    const errorBox = el("div", { class: "rw-error" });
+    const successBox = el("div", { class: "rw-success" });
 
     let selected = null;
     let lastAddressDetails = null;
 
-    // Leaflet map state
-    let map = null;
-    let marker = null;
+    let map = null, marker = null;
     function ensureMap(lat, lng) {
-      if (!window.L) {
-        console.warn("Leaflet not loaded on page.");
-        return;
-      }
-
+      if (!window.L) return;
       mapWrap.style.display = "block";
 
       if (!map) {
         map = L.map(mapDiv).setView([lat, lng], 19);
-
-        // Esri World Imagery (satellite-like)
         L.tileLayer(
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          {
-            maxZoom: 20,
-            attribution: "Tiles © Esri"
-          }
+          { maxZoom: 20, attribution: "Tiles © Esri" }
         ).addTo(map);
       } else {
         map.setView([lat, lng], 19);
@@ -206,10 +459,11 @@
 
     input.addEventListener("input", () => {
       const q = input.value.trim();
-      suggBox.innerHTML = "";
       selected = null;
       lastAddressDetails = null;
       status.textContent = "";
+      suggBox.innerHTML = "";
+      suggBox.style.display = "none";
 
       if (debounceTimer) clearTimeout(debounceTimer);
 
@@ -222,27 +476,19 @@
           if (mySeq !== suggestSeq) return;
 
           suggBox.innerHTML = "";
+          suggBox.style.display = "block";
 
           if (!suggestions.length) {
-            const noRes = el(
-              "div",
-              { style: "padding:10px;color:#888;font-size:14px;" },
-              [text("No suggestions found. You can still click “Measure My Roof.”")]
+            suggBox.appendChild(
+              el("div", { class: "rw-sugg-item", style:"cursor:default;color:#bbb;" }, [
+                text("No suggestions found. You can still click “Measure My Roof.”")
+              ])
             );
-            suggBox.appendChild(noRes);
             return;
           }
 
           suggestions.forEach(s => {
-            const item = el(
-              "div",
-              {
-                style:
-                  "padding:10px;cursor:pointer;border-bottom:1px solid #f3f3f3;"
-              },
-              [text(s.label)]
-            );
-
+            const item = el("div", { class: "rw-sugg-item" }, [text(s.label)]);
             item.onclick = () => {
               selected = s;
               lastAddressDetails = {
@@ -254,53 +500,40 @@
               };
               input.value = s.label;
               suggBox.innerHTML = "";
-
-              // ✅ show satellite image instantly
+              suggBox.style.display = "none";
               ensureMap(s.lat, s.lng);
             };
-
             suggBox.appendChild(item);
           });
         } catch (e) {
           if (mySeq !== suggestSeq) return;
-          console.error(e);
+          suggBox.style.display = "block";
           suggBox.innerHTML = "";
-          const noRes = el(
-            "div",
-            { style: "padding:10px;color:#888;font-size:14px;" },
-            [text("No suggestions found. You can still click “Measure My Roof.”")]
+          suggBox.appendChild(
+            el("div", { class: "rw-sugg-item", style:"cursor:default;color:#bbb;" }, [
+              text("No suggestions found. You can still click “Measure My Roof.”")
+            ])
           );
-          suggBox.appendChild(noRes);
         }
       }, 300);
     });
 
-    const btn = el(
-      "button",
-      {
-        style:
-          "margin-top:10px;width:100%;padding:12px;font-size:16px;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;"
-      },
-      [text("Measure My Roof")]
-    );
-
     btn.onclick = async () => {
-      resultBox.style.display = "none";
+      estimateBox.style.display = "none";
       formBox.style.display = "none";
+      successBox.style.display = "none";
+      errorBox.style.display = "none";
 
       const typed = input.value.trim();
       if (!typed) {
-        status.textContent = "Please type an address.";
+        status.textContent = "Please enter a property address.";
         return;
       }
 
-      if (!selected) {
-        selected = { label: typed, lat: null, lng: null };
-      }
+      if (!selected) selected = { label: typed, lat: null, lng: null };
 
-      status.textContent = "Measuring roof...";
+      status.textContent = "Measuring roof… please wait.";
 
-      // Resolve address parts for manual entries
       if (!lastAddressDetails || !lastAddressDetails.street) {
         lastAddressDetails = await resolveAddressDetails(typed);
         if (lastAddressDetails?.lat && lastAddressDetails?.lng) {
@@ -312,172 +545,151 @@
       try {
         data = await measureRoof(selected.lat, selected.lng, typed);
       } catch (e) {
-        console.error(e);
-        status.textContent =
-          "Could not contact measurement server. Please try again.";
+        status.textContent = "Measurement server error. Please try again.";
         return;
       }
 
-      if (data.error === "no_footprint") {
+      if (data.error) {
         status.textContent =
           "We couldn't auto-measure this roof. We'll confirm during inspection.";
         showLeadForm("unknown", "unknown");
         return;
       }
 
-      if (data.error) {
-        status.textContent =
-          "We couldn't measure that address. We'll confirm during inspection.";
-        showLeadForm("unknown", "unknown");
-        return;
-      }
-
       status.textContent = "";
-
-      resultBox.style.display = "block";
-      resultBox.innerHTML = `
-        <div><b>Estimated Roof Size:</b> ~${data.squares} squares</div>
-        <div><b>Estimated Pitch:</b> ${data.pitch_class}</div>
-        <div style="margin-top:8px;font-size:13px;color:#666;">
-          Final measurements confirmed during on-site inspection.
-        </div>
-      `;
+      estimateBox.style.display = "block";
+      card.querySelector(`#${containerId}-sq`).textContent = `~${data.squares} squares`;
+      card.querySelector(`#${containerId}-pitch`).textContent = data.pitch_class;
 
       showLeadForm(data.squares, data.pitch_class);
     };
 
     function showLeadForm(squares, pitchClass) {
-      formBox.style.display = "block";
       formBox.innerHTML = "";
+      formBox.style.display = "block";
 
-      const errorBox = el("div", {
-        style: "color:#b00020;font-size:14px;margin:6px 0;display:none;"
-      });
+      const field = (label, placeholder, value="") => {
+        const wrap = el("div", { class:"rw-field" });
+        const lab = el("div", { class:"rw-label" }, [
+          el("b", {}, [text(label)]), el("span",{class:"rw-required"},[text("*")])
+        ]);
+        const inp = el("input", {
+          class:"rw-input",
+          placeholder,
+          required:"true",
+          value
+        });
+        wrap.append(lab, inp);
+        return { wrap, inp };
+      };
 
-      const firstName = el("input", {
-        placeholder: "First Name *",
-        required: "true",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
+      const fFirst = field("First Name", "John");
+      const fLast  = field("Last Name", "Doe");
+      const fPhone = field("Phone", "###-###-####");
+      const fEmail = field("Email", "you@example.com");
 
-      const lastName = el("input", {
-        placeholder: "Last Name *",
-        required: "true",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
+      const fStreet = field("Street Address", "325 Depot St", lastAddressDetails?.street || "");
+      const fCity   = field("City", "Ann Arbor", lastAddressDetails?.city || "");
+      const fState  = field("State", "Michigan", lastAddressDetails?.state || "");
+      const fZip    = field("Postal Code", "48104", lastAddressDetails?.postal_code || "");
 
-      const phone = el("input", {
-        placeholder: "Phone *",
-        required: "true",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
+      const grid = el("div", { class:"rw-form-grid" }, [
+        fFirst.wrap, fLast.wrap,
+        fPhone.wrap, fEmail.wrap
+      ]);
 
-      const email = el("input", {
-        placeholder: "Email *",
-        required: "true",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
+      const gridAddr = el("div", { class:"rw-form-grid", style:"margin-top:6px;" }, [
+        fStreet.wrap, fCity.wrap,
+        fState.wrap, fZip.wrap
+      ]);
 
-      const street = el("input", {
-        placeholder: "Street Address *",
-        required: "true",
-        value: lastAddressDetails?.street || "",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
+      const submit = el("button", { class:"rw-btn rw-submit" }, [text("Get My Exact Quote")]);
 
-      const city = el("input", {
-        placeholder: "City *",
-        required: "true",
-        value: lastAddressDetails?.city || "",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
-
-      const state = el("input", {
-        placeholder: "State *",
-        required: "true",
-        value: lastAddressDetails?.state || "",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
-
-      const postal = el("input", {
-        placeholder: "Postal Code *",
-        required: "true",
-        value: lastAddressDetails?.postal_code || "",
-        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
-      });
-
-      const submit = el(
-        "button",
-        {
-          style:
-            "width:100%;padding:12px;margin-top:8px;background:green;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;"
-        },
-        [text("Get My Exact Quote")]
-      );
-
-      function showError(msg) {
+      function showError(msg){
         errorBox.textContent = msg;
         errorBox.style.display = "block";
       }
-      function hideError() {
-        errorBox.style.display = "none";
-      }
+      function hideError(){ errorBox.style.display="none"; }
 
       submit.onclick = async () => {
         hideError();
+        successBox.style.display = "none";
 
-        if (!firstName.value.trim()) return showError("First Name is required.");
-        if (!lastName.value.trim()) return showError("Last Name is required.");
-        if (!phone.value.trim()) return showError("Phone is required.");
-        if (!email.value.trim()) return showError("Email is required.");
-        if (!street.value.trim()) return showError("Street Address is required.");
-        if (!city.value.trim()) return showError("City is required.");
-        if (!state.value.trim()) return showError("State is required.");
-        if (!postal.value.trim()) return showError("Postal Code is required.");
+        const req = [
+          ["First Name", fFirst.inp.value],
+          ["Last Name", fLast.inp.value],
+          ["Phone", fPhone.inp.value],
+          ["Email", fEmail.inp.value],
+          ["Street Address", fStreet.inp.value],
+          ["City", fCity.inp.value],
+          ["State", fState.inp.value],
+          ["Postal Code", fZip.inp.value],
+        ];
+        for (const [name,val] of req){
+          if (!val.trim()) return showError(`${name} is required.`);
+        }
 
         submit.disabled = true;
-        submit.textContent = "Sending...";
+        submit.textContent = "Sending…";
 
-        const fullName = `${firstName.value} ${lastName.value}`.trim();
+        const fullName = `${fFirst.inp.value.trim()} ${fLast.inp.value.trim()}`.trim();
 
         try {
           await sendLead({
-            first_name: firstName.value.trim(),
-            last_name: lastName.value.trim(),
+            first_name: fFirst.inp.value.trim(),
+            last_name: fLast.inp.value.trim(),
             name: fullName,
-            phone: phone.value.trim(),
-            email: email.value.trim(),
+            phone: fPhone.inp.value.trim(),
+            email: fEmail.inp.value.trim(),
             address: input.value.trim(),
 
-            street: street.value.trim(),
-            city: city.value.trim(),
-            state: state.value.trim(),
-            postal_code: postal.value.trim(),
+            street: fStreet.inp.value.trim(),
+            city: fCity.inp.value.trim(),
+            state: fState.inp.value.trim(),
+            postal_code: fZip.inp.value.trim(),
             country: lastAddressDetails?.country || "US",
 
             squares: parseFloat(squares) || 0,
             pitch_class: pitchClass
           });
 
-          submit.textContent = "Sent! We'll contact you shortly.";
+          submit.textContent = "Sent!";
+          successBox.textContent = "✅ Thanks! We’ll contact you shortly to confirm your inspection.";
+          successBox.style.display = "block";
         } catch (e) {
-          console.error(e);
           submit.disabled = false;
-          submit.textContent = "Send Failed — Try Again";
+          submit.textContent = "Get My Exact Quote";
           showError("Send failed. Please try again.");
         }
       };
 
       formBox.append(
         errorBox,
-        firstName, lastName,
-        phone, email,
-        street, city, state, postal,
-        submit
+        el("div", { class:"rw-section-title" }, [text("Your Contact Info")]),
+        grid,
+        el("div", { class:"rw-section-title" }, [text("Confirm Property Address")]),
+        gridAddr,
+        submit,
+        successBox
       );
     }
 
-    root.append(title, input, suggBox, mapWrap, btn, status, resultBox, formBox);
+    card.append(
+      header,
+      addrTitle,
+      input,
+      suggBox,
+      note,
+      mapWrap,
+      btn,
+      status,
+      estimateBox,
+      formBox
+    );
+
+    // ✅ headline above card + centered
+    root.appendChild(headline);
+    root.appendChild(card);
   }
 
   window.RoofWidget = { init };
