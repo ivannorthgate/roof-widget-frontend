@@ -4,7 +4,43 @@
   const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/w06FI2oCDolhpxHVnjJn/webhook-trigger/24c72f4d-dbca-4326-a3ab-30c6e4486541";
   // =====================================
 
-  // ---------- helpers ----------
+  // ========= PRICING TIERS =========
+  const TIERS = [
+    {
+      key: "basic",
+      name: "Basic",
+      product: "IKO Cambridge Architectural Shingles",
+      price_per_sq: 660,
+      bullets: [
+        "Class 3 impact resistance rating",
+        "Built-in algae protection",
+        "True Square Advantage Sizing"
+      ]
+    },
+    {
+      key: "premium",
+      name: "Premium",
+      product: "IKO Dynasty Performance Shingles",
+      price_per_sq: 740,
+      bullets: [
+        "Class 3 Impact Resistance rating",
+        "Reinforced with ArmourZone",
+        "True Square Advantage Sizing"
+      ]
+    },
+    {
+      key: "deluxe",
+      name: "Deluxe",
+      product: "IKO Nordic Performance Shingles",
+      price_per_sq: 960,
+      bullets: [
+        "Class 4 impact resistance",
+        "Ultra-dimensional profile"
+      ]
+    }
+  ];
+  // ===============================
+
   function el(tag, attrs = {}, children = []) {
     const e = document.createElement(tag);
     Object.entries(attrs).forEach(([k, v]) => {
@@ -17,7 +53,6 @@
   }
   function text(t) { return document.createTextNode(t); }
 
-  // ---------- inject modern styling ----------
   function injectStyles() {
     if (document.getElementById("roof-widget-styles")) return;
 
@@ -30,18 +65,15 @@
         --rw-text: #f5f5f7;
         --rw-muted: #a0a0ad;
 
-        /* ✅ richer, deeper red (not neon) */
-        --rw-red: #b10f17;     /* main brand red */
-        --rw-red-2: #8f0c12;   /* darker shade for gradient */
+        --rw-red: #b10f17;
+        --rw-red-2: #8f0c12;
         --rw-red-soft: rgba(177,15,23,0.25);
 
         --rw-green: #16a34a;
         --rw-radius: 14px;
-        --rw-radius-sm: 10px;
         --rw-shadow: 0 10px 30px rgba(0,0,0,0.45);
       }
 
-      /* Hard-center inside any GHL column */
       .rw-wrap{
         font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
         color: var(--rw-text);
@@ -49,7 +81,6 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: flex-start;
         margin: 0 auto;
         text-align: left;
       }
@@ -76,7 +107,7 @@
         background: radial-gradient(80% 80% at 30% 20%, var(--rw-red), var(--rw-red-2));
         display:grid;place-items:center;font-weight:800;color:white;
         letter-spacing:.5px;
-        box-shadow: 0 6px 14px rgba(177,15,23,0.35);
+        box-shadow: 0 6px 14px rgba(177,15,23,0.25);
       }
       .rw-title{
         font-size:20px;font-weight:800;line-height:1.1;
@@ -141,6 +172,7 @@
         height:260px;width:100%;
       }
 
+      /* Buttons: no glow */
       .rw-btn{
         margin-top:12px;
         width:100%;
@@ -153,11 +185,11 @@
         border:none;
         border-radius:12px;
         cursor:pointer;
-        transition: transform .05s ease, opacity .2s ease, box-shadow .2s ease;
-        box-shadow: 0 8px 20px rgba(177,15,23,0.40);
+        transition: opacity .15s ease, filter .15s ease;
+        box-shadow: none;
       }
-      .rw-btn:hover{transform: translateY(-1px);}
-      .rw-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+      .rw-btn:hover{ filter: brightness(1.05); }
+      .rw-btn:disabled{ opacity:.6;cursor:not-allowed;filter:none; }
 
       .rw-estimate{
         margin-top:12px;
@@ -218,8 +250,8 @@
 
       .rw-submit{
         margin-top:10px;
-        background: linear-gradient(180deg, #19c467, var(--rw-green));
-        box-shadow: 0 8px 20px rgba(22,163,74,0.45);
+        background: linear-gradient(180deg, #1fbf63, var(--rw-green));
+        box-shadow:none;
       }
 
       .rw-success{
@@ -231,20 +263,95 @@
         display:none;
       }
 
+      /* ---------- Step 2 Pricing ---------- */
+      .rw-step2{ display:none; margin-top:12px; }
+      .rw-step2-title{
+        font-weight:800;
+        font-size:16px;
+        margin-bottom:8px;
+      }
+      .rw-tier-grid{
+        display:grid;
+        grid-template-columns:1fr;
+        gap:10px;
+      }
+      .rw-tier{
+        background:#0e0e12;
+        border:1px solid var(--rw-border);
+        border-radius:12px;
+        padding:12px;
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+      }
+      .rw-tier-top{
+        display:flex;justify-content:space-between;align-items:center;
+      }
+      .rw-tier-name{
+        font-size:16px;font-weight:800;
+      }
+      .rw-tier-badge{
+        font-size:11px;font-weight:700;letter-spacing:.3px;
+        color:#fff;background:rgba(255,255,255,0.06);
+        border:1px solid var(--rw-border);
+        padding:4px 8px;border-radius:999px;
+      }
+      .rw-tier-product{
+        color:var(--rw-muted);font-size:13px;
+      }
+      .rw-tier-price{
+        font-size:20px;font-weight:900;
+      }
+      .rw-tier-per{
+        font-size:12px;color:var(--rw-muted);
+      }
+      .rw-tier-bullets{
+        margin:0; padding-left:18px; font-size:13px; color:#e8e8ee;
+        line-height:1.5;
+      }
+      .rw-tier-select{
+        margin-top:6px;
+        width:100%;
+        padding:12px;
+        font-weight:800;
+        font-size:14px;
+        color:#fff;
+        background:#1a1a21;
+        border:1px solid var(--rw-border);
+        border-radius:10px;
+        cursor:pointer;
+      }
+      .rw-tier-select:hover{ filter:brightness(1.05); }
+
+      .rw-tier.featured{
+        border-color: rgba(177,15,23,0.8);
+        background: linear-gradient(180deg, #121219, #0e0e12);
+      }
+      .rw-tier.featured .rw-tier-select{
+        background: linear-gradient(180deg, var(--rw-red), var(--rw-red-2));
+        border:none;
+      }
+
+      /* ✅ New helper line (small + subtle) */
+      .rw-helper{
+        font-size:12px;
+        color:var(--rw-muted);
+        margin-top:8px;
+        text-align:center;
+      }
+
       @media (max-width: 520px){
         .rw-form-grid{grid-template-columns:1fr;}
         .rw-est-grid{grid-template-columns:1fr;}
         .rw-map{height:220px;}
       }
     `;
-
     const styleTag = document.createElement("style");
     styleTag.id = "roof-widget-styles";
     styleTag.textContent = css;
     document.head.appendChild(styleTag);
   }
 
-  // ---------- address / geocode ----------
   async function addressSuggest(q) {
     try {
       const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8`;
@@ -258,7 +365,6 @@
         const city = p.city || p.locality || "";
         const state = p.state || "";
         const postcode = p.postcode || "";
-
         return {
           label: `${housenumber} ${street}, ${city}, ${state} ${postcode}`.trim(),
           lat: f.geometry.coordinates[1],
@@ -271,9 +377,7 @@
       }).filter(x => x.label.length > 3);
 
       if (photonResults.length) return photonResults;
-    } catch (e) {
-      console.warn("Photon failed, trying Nominatim...");
-    }
+    } catch (e) {}
 
     const nUrl =
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`;
@@ -290,7 +394,6 @@
       const state = a.state || "";
       const postcode = a.postcode || "";
       const country = a.country_code ? a.country_code.toUpperCase() : "US";
-
       return {
         label: x.display_name,
         lat: parseFloat(x.lat),
@@ -331,7 +434,6 @@
     };
   }
 
-  // ---------- API ----------
   async function measureRoof(lat, lng, address) {
     const r = await fetch(`${API_BASE}/measure-roof`, {
       method: "POST",
@@ -350,7 +452,6 @@
     return r.json();
   }
 
-  // ---------- Widget ----------
   function init(containerId = "roof-widget") {
     injectStyles();
 
@@ -410,8 +511,12 @@
     const errorBox = el("div", { class: "rw-error" });
     const successBox = el("div", { class: "rw-success" });
 
+    const step2Box = el("div", { class: "rw-step2" });
+
     let selected = null;
     let lastAddressDetails = null;
+    let lastEstimate = null;
+    let lastLeadPayload = null;
 
     let map = null, marker = null;
     function ensureMap(lat, lng) {
@@ -499,6 +604,7 @@
     btn.onclick = async () => {
       estimateBox.style.display = "none";
       formBox.style.display = "none";
+      step2Box.style.display = "none";
       successBox.style.display = "none";
       errorBox.style.display = "none";
 
@@ -534,7 +640,9 @@
         return;
       }
 
+      lastEstimate = data;
       status.textContent = "";
+
       estimateBox.style.display = "block";
       card.querySelector(`#${containerId}-sq`).textContent = `~${data.squares} squares`;
       card.querySelector(`#${containerId}-pitch`).textContent = data.pitch_class;
@@ -575,13 +683,12 @@
         fFirst.wrap, fLast.wrap,
         fPhone.wrap, fEmail.wrap
       ]);
-
       const gridAddr = el("div", { class:"rw-form-grid", style:"margin-top:6px;" }, [
         fStreet.wrap, fCity.wrap,
         fState.wrap, fZip.wrap
       ]);
 
-      const submit = el("button", { class:"rw-btn rw-submit" }, [text("Get My Exact Quote")]);
+      const submit = el("button", { class:"rw-btn rw-submit" }, [text("Continue to Pricing")]);
 
       function showError(msg){
         errorBox.textContent = msg;
@@ -608,37 +715,45 @@
         }
 
         submit.disabled = true;
-        submit.textContent = "Sending…";
+        submit.textContent = "Saving…";
 
         const fullName = `${fFirst.inp.value.trim()} ${fLast.inp.value.trim()}`.trim();
 
+        lastLeadPayload = {
+          first_name: fFirst.inp.value.trim(),
+          last_name: fLast.inp.value.trim(),
+          name: fullName,
+          phone: fPhone.inp.value.trim(),
+          email: fEmail.inp.value.trim(),
+          address: input.value.trim(),
+
+          street: fStreet.inp.value.trim(),
+          city: fCity.inp.value.trim(),
+          state: fState.inp.value.trim(),
+          postal_code: fZip.inp.value.trim(),
+          country: lastAddressDetails?.country || "US",
+
+          squares: parseFloat(squares) || 0,
+          pitch_class: pitchClass
+        };
+
         try {
           await sendLead({
-            first_name: fFirst.inp.value.trim(),
-            last_name: fLast.inp.value.trim(),
-            name: fullName,
-            phone: fPhone.inp.value.trim(),
-            email: fEmail.inp.value.trim(),
-            address: input.value.trim(),
-
-            street: fStreet.inp.value.trim(),
-            city: fCity.inp.value.trim(),
-            state: fState.inp.value.trim(),
-            postal_code: fZip.inp.value.trim(),
-            country: lastAddressDetails?.country || "US",
-
-            squares: parseFloat(squares) || 0,
-            pitch_class: pitchClass
+            ...lastLeadPayload,
+            selected_package: "",
+            estimated_package_price: 0
           });
-
-          submit.textContent = "Sent!";
-          successBox.textContent = "✅ Thanks! We’ll contact you shortly to confirm your inspection.";
-          successBox.style.display = "block";
         } catch (e) {
           submit.disabled = false;
-          submit.textContent = "Get My Exact Quote";
-          showError("Send failed. Please try again.");
+          submit.textContent = "Continue to Pricing";
+          return showError("Send failed. Please try again.");
         }
+
+        submit.disabled = false;
+        submit.textContent = "Continue to Pricing";
+
+        formBox.style.display = "none";
+        showPricingStep();
       };
 
       formBox.append(
@@ -652,6 +767,128 @@
       );
     }
 
+    function showPricingStep() {
+      if (!lastEstimate || !lastLeadPayload) return;
+
+      const sq = parseFloat(lastEstimate.squares) || 0;
+      const sqLabel = sq ? `~${sq} squares` : "Estimate unavailable";
+
+      step2Box.innerHTML = "";
+      step2Box.style.display = "block";
+
+      const title = el("div", { class: "rw-step2-title" }, [
+        text("Choose Your Roof Package")
+      ]);
+
+      const sub = el("div", { class: "rw-note" }, [
+        text(`Based on your estimated roof size (${sqLabel}). Final price confirmed on inspection.`)
+      ]);
+
+      const grid = el("div", { class: "rw-tier-grid" });
+
+      TIERS.forEach((tier) => {
+        const estTotal = sq ? Math.round(sq * tier.price_per_sq) : null;
+
+        const cardTier = el("div", {
+          class: "rw-tier" + (tier.key === "premium" ? " featured" : "")
+        });
+
+        const top = el("div", { class:"rw-tier-top" }, [
+          el("div", { class:"rw-tier-name" }, [text(tier.name)]),
+          el("div", { class:"rw-tier-badge" }, [text(tier.key === "premium" ? "Most Popular" : "")])
+        ]);
+
+        const product = el("div", { class:"rw-tier-product" }, [text(tier.product)]);
+
+        const priceLine = el("div", {}, [
+          el("div", { class:"rw-tier-price" }, [
+            text(estTotal ? `$${estTotal.toLocaleString()}` : "Contact for price")
+          ]),
+          el("div", { class:"rw-tier-per" }, [
+            text(`$${tier.price_per_sq}/sq`)
+          ])
+        ]);
+
+        const ul = el("ul", { class:"rw-tier-bullets" },
+          tier.bullets.map(b => el("li", {}, [text(b)]))
+        );
+
+        const selectBtn = el("button", { class:"rw-tier-select" }, [
+          text(`Select ${tier.name}`)
+        ]);
+
+        selectBtn.onclick = async () => {
+          selectBtn.disabled = true;
+          selectBtn.textContent = "Saving…";
+
+          const finalPayload = {
+            ...lastLeadPayload,
+            selected_package: tier.name,
+            selected_product: tier.product,
+            price_per_sq: tier.price_per_sq,
+            estimated_package_price: estTotal || 0
+          };
+
+          try {
+            await sendLead(finalPayload);
+          } catch (e) {
+            selectBtn.disabled = false;
+            selectBtn.textContent = `Select ${tier.name}`;
+            return;
+          }
+
+          step2Box.innerHTML = "";
+          const done = el("div", { class:"rw-success", style:"display:block;" }, [
+            text(`✅ Great choice! We recorded your ${tier.name} package and will confirm details during inspection.`)
+          ]);
+          step2Box.append(done);
+        };
+
+        cardTier.append(top, product, priceLine, ul, selectBtn);
+        grid.append(cardTier);
+      });
+
+      // ✅ Not sure yet button
+      const unsureBtn = el("button", {
+        class: "rw-tier-select",
+        style: "margin-top:10px;background:#14141a;"
+      }, [text("Not sure yet?")]);
+
+      unsureBtn.onclick = async () => {
+        unsureBtn.disabled = true;
+        unsureBtn.textContent = "Saving…";
+
+        const finalPayload = {
+          ...lastLeadPayload,
+          selected_package: "Not sure yet",
+          selected_product: "",
+          price_per_sq: 0,
+          estimated_package_price: 0
+        };
+
+        try {
+          await sendLead(finalPayload);
+        } catch (e) {
+          unsureBtn.disabled = false;
+          unsureBtn.textContent = "Not sure yet?";
+          return;
+        }
+
+        step2Box.innerHTML = "";
+        const done = el("div", { class:"rw-success", style:"display:block;" }, [
+          text("✅ No problem. We’ll help you choose during inspection.")
+        ]);
+        step2Box.append(done);
+      };
+
+      // ✅ Helper line
+      const helper = el("div", { class:"rw-helper" }, [
+        text("Unsure? Most homeowners pick Premium for best value.")
+      ]);
+
+      step2Box.append(title, sub, grid, unsureBtn, helper);
+    }
+
     card.append(
       header,
       addrTitle,
@@ -662,7 +899,8 @@
       btn,
       status,
       estimateBox,
-      formBox
+      formBox,
+      step2Box
     );
 
     root.appendChild(card);
