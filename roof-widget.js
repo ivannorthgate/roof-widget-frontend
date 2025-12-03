@@ -1,7 +1,7 @@
 (function () {
   // ========= EDIT THESE 2 LINES =========
   const API_BASE = "https://roof-widget-backend.onrender.com"; // <-- your Render Live URL
-  const GHL_WEBHOOK = "https://hooks.gohighlevel.com/hooks/YOUR_REAL_WEBHOOK_ID"; // <-- paste your real GHL webhook
+  const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/w06FI2oCDolhpxHVnjJn/webhook-trigger/24c72f4d-dbca-4326-a3ab-30c6e4486541"; // <-- paste your real GHL webhook
   // =====================================
 
   function el(tag, attrs = {}, children = []) {
