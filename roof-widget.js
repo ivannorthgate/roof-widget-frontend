@@ -1,6 +1,6 @@
 (function () {
   // ========= EDIT THESE 2 LINES =========
-  const API_BASE = "https://roof-widget-backend.onrender.com"; 
+  const API_BASE = "https://roof-widget-backend.onrender.com";
   const GHL_WEBHOOK = "https://services.leadconnectorhq.com/hooks/w06FI2oCDolhpxHVnjJn/webhook-trigger/24c72f4d-dbca-4326-a3ab-30c6e4486541";
   // =====================================
 
@@ -12,11 +12,11 @@
   }
   function text(t) { return document.createTextNode(t); }
 
-  // ✅ Try Photon first, then Nominatim. Return structured address when possible.
+  // ---------- Autocomplete helpers ----------
   async function addressSuggest(q) {
-    // 1) Photon
+    // 1) Photon first (fast)
     try {
-      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5`;
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8`;
       const r = await fetch(url);
       const d = await r.json();
 
@@ -45,9 +45,9 @@
       console.warn("Photon failed, trying Nominatim...");
     }
 
-    // 2) Nominatim fallback (more complete)
+    // 2) Nominatim fallback (better coverage, still free)
     const nUrl =
-      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(q)}`;
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`;
 
     const nr = await fetch(nUrl, {
       headers: {
@@ -78,7 +78,6 @@
     });
   }
 
-  // ✅ If user typed manually, we resolve it once to structured fields
   async function resolveAddressDetails(addressText) {
     const nUrl =
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(addressText)}`;
@@ -111,6 +110,7 @@
     };
   }
 
+  // ---------- API calls ----------
   async function measureRoof(lat, lng, address) {
     const r = await fetch(`${API_BASE}/measure-roof`, {
       method: "POST",
@@ -129,6 +129,7 @@
     return r.json();
   }
 
+  // ---------- Widget ----------
   function init(containerId = "roof-widget") {
     const root = document.getElementById(containerId);
     if (!root) return;
@@ -167,49 +168,73 @@
     let selected = null;
     let lastEstimate = null;
 
-    input.addEventListener("input", async () => {
+    // ✅ Debounce + “latest request only” guard
+    let debounceTimer = null;
+    let suggestSeq = 0;
+
+    input.addEventListener("input", () => {
       const q = input.value.trim();
+
+      // reset
       suggBox.innerHTML = "";
       selected = null;
+      status.textContent = "";
 
-      if (q.length < 3) return;
+      if (debounceTimer) clearTimeout(debounceTimer);
 
-      try {
-        const suggestions = await addressSuggest(q);
+      debounceTimer = setTimeout(async () => {
+        const mySeq = ++suggestSeq;
 
-        if (!suggestions.length) {
+        if (q.length < 3) return;
+
+        try {
+          const suggestions = await addressSuggest(q);
+
+          // If another request started after this one, ignore this result
+          if (mySeq !== suggestSeq) return;
+
+          suggBox.innerHTML = "";
+
+          if (!suggestions.length) {
+            const noRes = el(
+              "div",
+              { style: "padding:10px;color:#888;font-size:14px;" },
+              [text("No suggestions found. You can still click “Measure My Roof.”")]
+            );
+            suggBox.appendChild(noRes);
+            return;
+          }
+
+          suggestions.forEach(s => {
+            const item = el(
+              "div",
+              {
+                style:
+                  "padding:10px;cursor:pointer;border-bottom:1px solid #f3f3f3;"
+              },
+              [text(s.label)]
+            );
+
+            item.onclick = () => {
+              selected = s;
+              input.value = s.label;
+              suggBox.innerHTML = "";
+            };
+
+            suggBox.appendChild(item);
+          });
+        } catch (e) {
+          if (mySeq !== suggestSeq) return;
+          console.error(e);
+          suggBox.innerHTML = "";
           const noRes = el(
             "div",
             { style: "padding:10px;color:#888;font-size:14px;" },
             [text("No suggestions found. You can still click “Measure My Roof.”")]
           );
           suggBox.appendChild(noRes);
-          return;
         }
-
-        suggestions.forEach(s => {
-          const item = el(
-            "div",
-            {
-              style:
-                "padding:10px;cursor:pointer;border-bottom:1px solid #f3f3f3;"
-            },
-            [text(s.label)]
-          );
-
-          item.onclick = () => {
-            selected = s;
-            input.value = s.label;
-            suggBox.innerHTML = "";
-          };
-
-          suggBox.appendChild(item);
-        });
-      } catch (e) {
-        console.error(e);
-        status.textContent =
-          "Address search failed. You can still click “Measure My Roof.”";
-      }
+      }, 300);
     });
 
     const btn = el(
@@ -231,7 +256,6 @@
           status.textContent = "Please type an address.";
           return;
         }
-        // Manual typed fallback
         selected = { label: typed, lat: null, lng: null };
       }
 
@@ -319,8 +343,6 @@
 
         const fullName = `${firstName.value} ${lastName.value}`.trim();
 
-        // ✅ If user selected a suggestion we already have structured fields
-        // ✅ If not, resolve once via Nominatim
         let details = null;
         if (selected && selected.street) {
           details = {
@@ -343,7 +365,6 @@
             email: email.value.trim(),
             address: input.value,
 
-            // ✅ separate address fields to GHL
             street: details?.street || "",
             city: details?.city || "",
             state: details?.state || "",
