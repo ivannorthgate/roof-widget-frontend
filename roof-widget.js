@@ -22,8 +22,6 @@
     if (document.getElementById("roof-widget-styles")) return;
 
     const css = `
-      @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap');
-
       :root{
         --rw-bg: #0b0b0d;
         --rw-card: #121216;
@@ -31,8 +29,12 @@
         --rw-border: rgba(255,255,255,0.08);
         --rw-text: #f5f5f7;
         --rw-muted: #a0a0ad;
-        --rw-red: #e50914;
-        --rw-red-2: #ff2430;
+
+        /* ✅ richer, deeper red (not neon) */
+        --rw-red: #b10f17;     /* main brand red */
+        --rw-red-2: #8f0c12;   /* darker shade for gradient */
+        --rw-red-soft: rgba(177,15,23,0.25);
+
         --rw-green: #16a34a;
         --rw-radius: 14px;
         --rw-radius-sm: 10px;
@@ -46,26 +48,10 @@
         width: 100%;
         display: flex;
         flex-direction: column;
-        align-items: center;     /* centers children horizontally */
+        align-items: center;
         justify-content: flex-start;
         margin: 0 auto;
         text-align: left;
-      }
-
-      .rw-headline{
-        width: 100%;
-        max-width: 560px;
-        text-align: center;
-        font-family: 'Montserrat', system-ui, sans-serif;
-        font-weight: 900;
-        font-size: 28px;
-        line-height: 1.15;
-        letter-spacing: .2px;
-        margin: 0 0 14px 0;
-        color: #fff;
-      }
-      .rw-headline .rw-headline-red{
-        color: var(--rw-red);
       }
 
       .rw-card{
@@ -76,7 +62,7 @@
         border-radius: var(--rw-radius);
         box-shadow: var(--rw-shadow);
         padding: 18px;
-        margin: 0 auto;          /* centers the card */
+        margin: 0 auto;
       }
 
       .rw-header{
@@ -87,10 +73,10 @@
       }
       .rw-logo{
         width:42px;height:42px;border-radius:10px;
-        background: radial-gradient(80% 80% at 30% 20%, var(--rw-red-2), var(--rw-red));
+        background: radial-gradient(80% 80% at 30% 20%, var(--rw-red), var(--rw-red-2));
         display:grid;place-items:center;font-weight:800;color:white;
         letter-spacing:.5px;
-        box-shadow: 0 6px 14px rgba(229,9,20,0.45);
+        box-shadow: 0 6px 14px rgba(177,15,23,0.35);
       }
       .rw-title{
         font-size:20px;font-weight:800;line-height:1.1;
@@ -117,8 +103,8 @@
         transition: border .15s ease, box-shadow .15s ease;
       }
       .rw-input:focus{
-        border-color: rgba(229,9,20,0.9);
-        box-shadow: 0 0 0 3px rgba(229,9,20,0.20);
+        border-color: var(--rw-red);
+        box-shadow: 0 0 0 3px var(--rw-red-soft);
       }
 
       .rw-sugg{
@@ -163,12 +149,12 @@
         letter-spacing:.3px;
         font-size:15px;
         color:white;
-        background: linear-gradient(180deg, var(--rw-red-2), var(--rw-red));
+        background: linear-gradient(180deg, var(--rw-red), var(--rw-red-2));
         border:none;
         border-radius:12px;
         cursor:pointer;
         transition: transform .05s ease, opacity .2s ease, box-shadow .2s ease;
-        box-shadow: 0 8px 20px rgba(229,9,20,0.45);
+        box-shadow: 0 8px 20px rgba(177,15,23,0.40);
       }
       .rw-btn:hover{transform: translateY(-1px);}
       .rw-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
@@ -224,8 +210,8 @@
       .rw-error{
         display:none;
         color:#ffd2d5;
-        background:rgba(229,9,20,0.12);
-        border:1px solid rgba(229,9,20,0.45);
+        background:rgba(177,15,23,0.12);
+        border:1px solid rgba(177,15,23,0.45);
         padding:8px 10px;border-radius:10px;
         font-size:13px;margin-bottom:8px;
       }
@@ -246,7 +232,6 @@
       }
 
       @media (max-width: 520px){
-        .rw-headline{font-size:22px;}
         .rw-form-grid{grid-template-columns:1fr;}
         .rw-est-grid{grid-template-columns:1fr;}
         .rw-map{height:220px;}
@@ -373,13 +358,6 @@
     if (!root) return;
     root.innerHTML = "";
     root.className = "rw-wrap";
-
-    // ✅ NEW: Big headline on top
-    const headline = el("div", { class: "rw-headline" }, [
-      text("Skip The Sales Pitch, Get Your "),
-      el("span", { class: "rw-headline-red" }, [text("Own Roof Price")]),
-      text(" On Your Own Time")
-    ]);
 
     const card = el("div", { class: "rw-card" });
 
@@ -687,8 +665,6 @@
       formBox
     );
 
-    // ✅ headline above card + centered
-    root.appendChild(headline);
     root.appendChild(card);
   }
 
