@@ -12,9 +12,7 @@
   }
   function text(t) { return document.createTextNode(t); }
 
-  // ---------- Autocomplete helpers ----------
   async function addressSuggest(q) {
-    // 1) Photon first (fast)
     try {
       const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8`;
       const r = await fetch(url);
@@ -45,14 +43,11 @@
       console.warn("Photon failed, trying Nominatim...");
     }
 
-    // 2) Nominatim fallback (better coverage, still free)
     const nUrl =
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`;
 
     const nr = await fetch(nUrl, {
-      headers: {
-        "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)"
-      }
+      headers: { "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)" }
     });
     const nd = await nr.json();
 
@@ -83,9 +78,7 @@
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=1&q=${encodeURIComponent(addressText)}`;
 
     const nr = await fetch(nUrl, {
-      headers: {
-        "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)"
-      }
+      headers: { "User-Agent": "RoofWidget/1.0 (contact: youremail@yourdomain.com)" }
     });
     const nd = await nr.json();
     if (!nd || !nd.length) return null;
@@ -110,7 +103,6 @@
     };
   }
 
-  // ---------- API calls ----------
   async function measureRoof(lat, lng, address) {
     const r = await fetch(`${API_BASE}/measure-roof`, {
       method: "POST",
@@ -129,7 +121,6 @@
     return r.json();
   }
 
-  // ---------- Widget ----------
   function init(containerId = "roof-widget") {
     const root = document.getElementById(containerId);
     if (!root) return;
@@ -144,13 +135,25 @@
       type: "text",
       placeholder: "Type your address...",
       style:
-        "width:100%;padding:12px;font-size:16px;border:1px solid #ccc;border-radius:8px;"
+        "width:100%;padding:12px;font-size:16px;border:1px solid #ccc;border-radius:8px;",
+      required: "true"
     });
 
     const suggBox = el("div", {
       style:
         "border:1px solid #eee;border-top:none;border-radius:0 0 8px 8px;"
     });
+
+    // ✅ SATELLITE PREVIEW BOX
+    const mapWrap = el("div", {
+      style:
+        "margin-top:10px;border:1px solid #ddd;border-radius:8px;overflow:hidden;display:none;"
+    });
+    const mapDiv = el("div", {
+      id: `${containerId}-map`,
+      style: "height:260px;width:100%;"
+    });
+    mapWrap.appendChild(mapDiv);
 
     const status = el("div", {
       style: "margin-top:10px;color:#555;font-size:14px;"
@@ -166,31 +169,56 @@
     });
 
     let selected = null;
-    let lastEstimate = null;
+    let lastAddressDetails = null;
 
-    // ✅ Debounce + “latest request only” guard
+    // Leaflet map state
+    let map = null;
+    let marker = null;
+    function ensureMap(lat, lng) {
+      if (!window.L) {
+        console.warn("Leaflet not loaded on page.");
+        return;
+      }
+
+      mapWrap.style.display = "block";
+
+      if (!map) {
+        map = L.map(mapDiv).setView([lat, lng], 19);
+
+        // Esri World Imagery (satellite-like)
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 20,
+            attribution: "Tiles © Esri"
+          }
+        ).addTo(map);
+      } else {
+        map.setView([lat, lng], 19);
+      }
+
+      if (marker) marker.remove();
+      marker = L.marker([lat, lng]).addTo(map);
+    }
+
     let debounceTimer = null;
     let suggestSeq = 0;
 
     input.addEventListener("input", () => {
       const q = input.value.trim();
-
-      // reset
       suggBox.innerHTML = "";
       selected = null;
+      lastAddressDetails = null;
       status.textContent = "";
 
       if (debounceTimer) clearTimeout(debounceTimer);
 
       debounceTimer = setTimeout(async () => {
         const mySeq = ++suggestSeq;
-
         if (q.length < 3) return;
 
         try {
           const suggestions = await addressSuggest(q);
-
-          // If another request started after this one, ignore this result
           if (mySeq !== suggestSeq) return;
 
           suggBox.innerHTML = "";
@@ -217,8 +245,18 @@
 
             item.onclick = () => {
               selected = s;
+              lastAddressDetails = {
+                street: s.street || "",
+                city: s.city || "",
+                state: s.state || "",
+                postal_code: s.postal_code || "",
+                country: s.country || "US"
+              };
               input.value = s.label;
               suggBox.innerHTML = "";
+
+              // ✅ show satellite image instantly
+              ensureMap(s.lat, s.lng);
             };
 
             suggBox.appendChild(item);
@@ -250,20 +288,29 @@
       resultBox.style.display = "none";
       formBox.style.display = "none";
 
+      const typed = input.value.trim();
+      if (!typed) {
+        status.textContent = "Please type an address.";
+        return;
+      }
+
       if (!selected) {
-        const typed = input.value.trim();
-        if (!typed) {
-          status.textContent = "Please type an address.";
-          return;
-        }
         selected = { label: typed, lat: null, lng: null };
       }
 
       status.textContent = "Measuring roof...";
 
+      // Resolve address parts for manual entries
+      if (!lastAddressDetails || !lastAddressDetails.street) {
+        lastAddressDetails = await resolveAddressDetails(typed);
+        if (lastAddressDetails?.lat && lastAddressDetails?.lng) {
+          ensureMap(lastAddressDetails.lat, lastAddressDetails.lng);
+        }
+      }
+
       let data;
       try {
-        data = await measureRoof(selected.lat, selected.lng, input.value);
+        data = await measureRoof(selected.lat, selected.lng, typed);
       } catch (e) {
         console.error(e);
         status.textContent =
@@ -285,7 +332,6 @@
         return;
       }
 
-      lastEstimate = data;
       status.textContent = "";
 
       resultBox.style.display = "block";
@@ -300,32 +346,64 @@
       showLeadForm(data.squares, data.pitch_class);
     };
 
-    async function showLeadForm(squares, pitchClass) {
+    function showLeadForm(squares, pitchClass) {
       formBox.style.display = "block";
       formBox.innerHTML = "";
 
+      const errorBox = el("div", {
+        style: "color:#b00020;font-size:14px;margin:6px 0;display:none;"
+      });
+
       const firstName = el("input", {
-        placeholder: "First Name",
-        style:
-          "width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+        placeholder: "First Name *",
+        required: "true",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
       });
 
       const lastName = el("input", {
-        placeholder: "Last Name",
-        style:
-          "width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+        placeholder: "Last Name *",
+        required: "true",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
       });
 
       const phone = el("input", {
-        placeholder: "Phone",
-        style:
-          "width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+        placeholder: "Phone *",
+        required: "true",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
       });
 
       const email = el("input", {
-        placeholder: "Email",
-        style:
-          "width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+        placeholder: "Email *",
+        required: "true",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+      });
+
+      const street = el("input", {
+        placeholder: "Street Address *",
+        required: "true",
+        value: lastAddressDetails?.street || "",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+      });
+
+      const city = el("input", {
+        placeholder: "City *",
+        required: "true",
+        value: lastAddressDetails?.city || "",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+      });
+
+      const state = el("input", {
+        placeholder: "State *",
+        required: "true",
+        value: lastAddressDetails?.state || "",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
+      });
+
+      const postal = el("input", {
+        placeholder: "Postal Code *",
+        required: "true",
+        value: lastAddressDetails?.postal_code || "",
+        style:"width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:6px;"
       });
 
       const submit = el(
@@ -337,24 +415,30 @@
         [text("Get My Exact Quote")]
       );
 
+      function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.style.display = "block";
+      }
+      function hideError() {
+        errorBox.style.display = "none";
+      }
+
       submit.onclick = async () => {
+        hideError();
+
+        if (!firstName.value.trim()) return showError("First Name is required.");
+        if (!lastName.value.trim()) return showError("Last Name is required.");
+        if (!phone.value.trim()) return showError("Phone is required.");
+        if (!email.value.trim()) return showError("Email is required.");
+        if (!street.value.trim()) return showError("Street Address is required.");
+        if (!city.value.trim()) return showError("City is required.");
+        if (!state.value.trim()) return showError("State is required.");
+        if (!postal.value.trim()) return showError("Postal Code is required.");
+
         submit.disabled = true;
         submit.textContent = "Sending...";
 
         const fullName = `${firstName.value} ${lastName.value}`.trim();
-
-        let details = null;
-        if (selected && selected.street) {
-          details = {
-            street: selected.street,
-            city: selected.city,
-            state: selected.state,
-            postal_code: selected.postal_code,
-            country: selected.country
-          };
-        } else {
-          details = await resolveAddressDetails(input.value);
-        }
 
         try {
           await sendLead({
@@ -363,13 +447,13 @@
             name: fullName,
             phone: phone.value.trim(),
             email: email.value.trim(),
-            address: input.value,
+            address: input.value.trim(),
 
-            street: details?.street || "",
-            city: details?.city || "",
-            state: details?.state || "",
-            postal_code: details?.postal_code || "",
-            country: details?.country || "US",
+            street: street.value.trim(),
+            city: city.value.trim(),
+            state: state.value.trim(),
+            postal_code: postal.value.trim(),
+            country: lastAddressDetails?.country || "US",
 
             squares: parseFloat(squares) || 0,
             pitch_class: pitchClass
@@ -380,13 +464,20 @@
           console.error(e);
           submit.disabled = false;
           submit.textContent = "Send Failed — Try Again";
+          showError("Send failed. Please try again.");
         }
       };
 
-      formBox.append(firstName, lastName, phone, email, submit);
+      formBox.append(
+        errorBox,
+        firstName, lastName,
+        phone, email,
+        street, city, state, postal,
+        submit
+      );
     }
 
-    root.append(title, input, suggBox, btn, status, resultBox, formBox);
+    root.append(title, input, suggBox, mapWrap, btn, status, resultBox, formBox);
   }
 
   window.RoofWidget = { init };
