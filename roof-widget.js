@@ -413,6 +413,7 @@
     const addrTitle = el("div", { class: "rw-section-title" }, [
       text("Property Address")
     ]);
+
     const input = el("input", {
       class: "rw-input",
       type: "text",
@@ -441,6 +442,7 @@
     mapWrap.appendChild(mapDiv);
 
     const status = el("div", { class: "rw-status" });
+
     const btn = el("button", { class: "rw-btn" }, [
       text("Measure My Roof")
     ]);
@@ -474,15 +476,37 @@
     let map = null;
     let marker = null;
 
-    function initDefaultMap() {
-      if (!window.L) return;
-      if (map) return;
+    function waitForLeafletAndInit(tries = 0) {
+      if (window.L) {
+        initDefaultMap();
+        return;
+      }
+      if (tries > 40) {
+        console.warn("Leaflet not found. Map will not render.");
+        return;
+      }
+      setTimeout(() => waitForLeafletAndInit(tries + 1), 150);
+    }
 
-      map = L.map(mapDiv).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    function initDefaultMap() {
+      if (!window.L || map) return;
+
+      map = L.map(mapDiv, {
+        zoomControl: true,
+        attributionControl: true
+      }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        { maxZoom: 20, attribution: "Tiles © Esri" }
+        {
+          maxZoom: 20,
+          attribution: "© Esri"
+        }
       ).addTo(map);
+
+      // force tiles to recalc after GHL layout settles
+      setTimeout(() => map.invalidateSize(), 300);
+      setTimeout(() => map.invalidateSize(), 1200);
     }
 
     function ensureMap(lat, lng) {
@@ -493,10 +517,13 @@
 
       if (marker) marker.remove();
       marker = L.marker([lat, lng]).addTo(map);
+
+      // refresh tiles after zoom snap
+      setTimeout(() => map.invalidateSize(), 250);
     }
 
     // show default map on load
-    initDefaultMap();
+    waitForLeafletAndInit();
 
     // ---- Suggestion input ----
     let debounceTimer = null;
@@ -608,6 +635,7 @@
         showLeadForm("unknown", "unknown");
         return;
       }
+
       if (data.error) {
         status.textContent =
           "We couldn't measure that address. We'll confirm during inspection.";
